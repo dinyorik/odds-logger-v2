@@ -8,13 +8,18 @@ import threading
 import time
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 
-from paths import TG_CONTROL_TOKEN as TOKEN
+from paths import (
+    TG_CONTROL_TOKEN as TOKEN,
+    TG_CHAT_ID,
+    CURL_FILE as CURL_PATH,
+    ROOT as WORK_DIR,
+    WINNER_NEEDED_FILE,
+    WINNER_ANSWER_FILE,
+)
+CHAT_ID = int(TG_CHAT_ID) if TG_CHAT_ID else 0
 ALLOWED_ID = CHAT_ID  # only this user can control the bot
-from paths import TG_CHAT_ID; CHAT_ID = int(TG_CHAT_ID) if TG_CHAT_ID else 0
 LOGGER_PATH = r"D:\it\odds-logger-v2\odds_logger.py"
 PYTHON_PATH = r"C:\Users\User\AppData\Local\Programs\Python\Python314\python.exe"
-from paths import CURL_FILE as CURL_PATH
-from paths import ROOT as WORK_DIR, WINNER_NEEDED_FILE, WINNER_ANSWER_FILE
 
 bot = telebot.TeleBot(TOKEN)
 proc = None
