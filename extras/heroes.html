@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MLBB Pick Logger</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Share+Tech+Mono&display=swap');
+
+  :root {
+    --bg: #0a0c10;
+    --surface: #111520;
+    --border: #1e2535;
+    --accent: #00c8ff;
+    --accent2: #ff4466;
+    --text: #c8d4e8;
+    --dim: #4a5568;
+    --team-a: #1a6fff;
+    --team-b: #ff3a3a;
+    --role-fighter: #e07b39;
+    --role-assassin: #a855f7;
+    --role-mage: #3b82f6;
+    --role-tank: #22c55e;
+    --role-marksman: #eab308;
+    --role-support: #ec4899;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 16px;
+  }
+  header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+  .draft-badge {
+    font-size: 11px;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--accent2);
+    background: rgba(255,68,102,.1);
+    border: 1px solid var(--accent2);
+    padding: 3px 8px;
+    display: none;
+  }
+  .draft-badge.visible { display: block; }
+
+  .match-meta {
+    display: flex;
+    gap: 12px;
+    margin-left: auto;
+    align-items: center;
+  }
+  .match-meta label { font-size: 12px; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; }
+  .match-meta input {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 14px;
+    padding: 7px 10px;
+    width: 150px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .match-meta input:focus { border-color: var(--accent); }
+
+  .main-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .team-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 14px;
+  }
+  .team-panel.team-a { border-top: 3px solid var(--team-a); }
+  .team-panel.team-b { border-top: 3px solid var(--team-b); }
+  .team-title {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .team-a .team-title { color: var(--team-a); }
+  .team-b .team-title { color: var(--team-b); }
+
+  .slots { display: flex; gap: 8px; flex-wrap: wrap; }
+  .slot {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 7px 12px;
+    font-size: 14px;
+    font-weight: 600;
+    min-width: 130px;
+  }
+  .slot.filled-a { border-color: var(--team-a); color: #fff; }
+  .slot.filled-b { border-color: var(--team-b); color: #fff; }
+  .slot-num { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--dim); min-width: 14px; }
+  .slot-name { flex: 1; }
+  .slot-remove { cursor: pointer; color: var(--dim); font-size: 15px; display: none; }
+  .slot.filled-a .slot-remove, .slot.filled-b .slot-remove { display: block; }
+  .slot-remove:hover { color: var(--accent2); }
+  .role-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  .hero-browser {
+    grid-column: 1 / -1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 14px;
+  }
+
+  .role-tabs {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .role-tab {
+    padding: 7px 18px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--dim);
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .role-tab.active { color: #000; }
+  .role-tab[data-role="all"].active      { background: var(--accent); border-color: var(--accent); }
+  .role-tab[data-role="Fighter"].active  { background: var(--role-fighter); border-color: var(--role-fighter); }
+  .role-tab[data-role="Assassin"].active { background: var(--role-assassin); border-color: var(--role-assassin); color: #fff; }
+  .role-tab[data-role="Mage"].active     { background: var(--role-mage); border-color: var(--role-mage); color: #fff; }
+  .role-tab[data-role="Tank"].active     { background: var(--role-tank); border-color: var(--role-tank); }
+  .role-tab[data-role="Marksman"].active { background: var(--role-marksman); border-color: var(--role-marksman); }
+  .role-tab[data-role="Support"].active  { background: var(--role-support); border-color: var(--role-support); color: #fff; }
+
+  .hero-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 6px;
+    max-height: 340px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+  .hero-grid::-webkit-scrollbar { width: 5px; }
+  .hero-grid::-webkit-scrollbar-track { background: var(--bg); }
+  .hero-grid::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .hero-btn {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 12px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    cursor: pointer;
+    transition: all .1s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .hero-btn:hover:not(:disabled) { border-color: var(--accent); color: #fff; background: rgba(0,200,255,.07); }
+  .hero-btn.used-a { background: rgba(26,111,255,.2); border-color: var(--team-a); color: var(--team-a); cursor: not-allowed; }
+  .hero-btn.used-b { background: rgba(255,58,58,.2); border-color: var(--team-b); color: var(--team-b); cursor: not-allowed; }
+
+  .bottom-bar {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 10px 0 4px;
+  }
+  .target-select { display: flex; gap: 6px; }
+  .target-btn {
+    padding: 9px 22px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border: 2px solid var(--border);
+    background: var(--bg);
+    color: var(--dim);
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .target-btn.active-a { border-color: var(--team-a); color: var(--team-a); background: rgba(26,111,255,.1); }
+  .target-btn.active-b { border-color: var(--team-b); color: var(--team-b); background: rgba(255,58,58,.1); }
+
+  .status-msg {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: var(--dim);
+    flex: 1;
+  }
+
+  .winner-select { display: flex; align-items: center; gap: 5px; }
+  .winner-label { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--dim); margin-right: 4px; }
+  .winner-btn {
+    padding: 7px 16px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--dim);
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .winner-btn#winA.selected  { border-color: var(--team-a); color: var(--team-a); background: rgba(26,111,255,.15); }
+  .winner-btn#winB.selected  { border-color: var(--team-b); color: var(--team-b); background: rgba(255,58,58,.15); }
+  .winner-btn#winNone.selected { border-color: var(--dim); color: var(--text); background: rgba(255,255,255,.05); }
+  .winner-btn:hover { border-color: var(--accent); }
+
+  .clear-btn {
+    padding: 9px 16px;
+    background: transparent;
+    color: var(--accent2);
+    border: 1px solid var(--accent2);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .clear-btn:hover { background: rgba(255,68,102,.1); }
+
+  .save-btn {
+    padding: 10px 30px;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all .15s;
+    margin-left: auto;
+  }
+  .save-btn:hover { background: #33d4ff; }
+  .save-btn:disabled { background: var(--dim); color: #222; cursor: not-allowed; }
+
+  .log-panel {
+    grid-column: 1 / -1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 14px;
+    max-height: 220px;
+    overflow-y: auto;
+  }
+  .log-panel h3 {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 10px;
+  }
+  .log-row {
+    display: flex;
+    gap: 12px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+  }
+  .log-row .lid { color: var(--accent); min-width: 100px; }
+  .log-row .lmap { color: var(--dim); min-width: 50px; }
+  .log-row .la { color: var(--team-a); flex: 1; }
+  .log-row .lb { color: var(--team-b); flex: 1; }
+  .log-del { cursor: pointer; color: var(--dim); font-size: 14px; flex-shrink: 0; }
+  .log-del:hover { color: var(--accent2); }
+
+  .export-btn {
+    margin-top: 10px;
+    padding: 6px 16px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .export-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .empty-log { font-size: 12px; color: var(--dim); font-family: 'Share Tech Mono', monospace; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚔ MLBB Pick Logger</h1>
+  <span class="draft-badge" id="draftBadge">● ЧЕРНОВИК СОХРАНЁН</span>
+  <div class="match-meta">
+    <div>
+      <label>Match ID</label><br>
+      <input type="text" id="matchId" placeholder="716869322">
+    </div>
+    <div>
+      <label>Map</label><br>
+      <input type="number" id="mapNum" value="1" min="1" max="5" style="width:65px">
+    </div>
+  </div>
+</header>
+
+<div class="main-layout">
+
+  <div class="team-panel team-a">
+    <div class="team-title">🔵 Team A</div>
+    <div class="slots" id="slots-a"></div>
+  </div>
+
+  <div class="team-panel team-b">
+    <div class="team-title">🔴 Team B</div>
+    <div class="slots" id="slots-b"></div>
+  </div>
+
+  <div class="hero-browser">
+    <div class="role-tabs" id="roleTabs"></div>
+    <div class="hero-grid" id="heroGrid"></div>
+  </div>
+
+  <div class="bottom-bar">
+    <div class="target-select">
+      <button class="target-btn active-a" id="btnTargetA" onclick="setTarget('a')">Team A</button>
+      <button class="target-btn" id="btnTargetB" onclick="setTarget('b')">Team B</button>
+    </div>
+    <span class="status-msg" id="statusMsg">Выбери команду и нажимай героев</span>
+    <div class="winner-select">
+      <span class="winner-label">Победитель:</span>
+      <button class="winner-btn" id="winA" onclick="setWinner('A')">A</button>
+      <button class="winner-btn" id="winB" onclick="setWinner('B')">B</button>
+      <button class="winner-btn" id="winNone" onclick="setWinner(null)">—</button>
+    </div>
+    <button class="clear-btn" onclick="clearAll()">Сброс</button>
+    <button class="save-btn" id="saveBtn" onclick="saveEntry()" disabled>Сохранить</button>
+  </div>
+
+  <div class="log-panel">
+    <h3>Записанные матчи</h3>
+    <div id="logRows"><div class="empty-log">— пусто —</div></div>
+    <button class="export-btn" onclick="exportCSV()">⬇ Экспорт CSV</button>
+  </div>
+
+</div>
+
+<script>
+const ROLE_COLORS = {
+  Fighter:'var(--role-fighter)', Assassin:'var(--role-assassin)',
+  Mage:'var(--role-mage)', Tank:'var(--role-tank)',
+  Marksman:'var(--role-marksman)', Support:'var(--role-support)',
+};
+
+const HEROES = [
+  {name:'Aamon',role:'Assassin'},{name:'Akai',role:'Tank'},{name:'Aldous',role:'Fighter'},
+  {name:'Alice',role:'Tank'},{name:'Alpha',role:'Fighter'},{name:'Alucard',role:'Fighter'},
+  {name:'Angela',role:'Support'},{name:'Arlott',role:'Fighter'},{name:'Atlas',role:'Tank'},
+  {name:'Aulus',role:'Fighter'},{name:'Aurora',role:'Mage'},{name:'Badang',role:'Fighter'},
+  {name:'Balmond',role:'Fighter'},{name:'Barats',role:'Tank'},{name:'Baxia',role:'Tank'},
+  {name:'Beatrix',role:'Marksman'},{name:'Belerick',role:'Tank'},{name:'Benedetta',role:'Fighter'},
+  {name:'Brody',role:'Marksman'},{name:'Bruno',role:'Marksman'},{name:'Carmilla',role:'Support'},
+  {name:'Cecilion',role:'Mage'},{name:"Chang'e",role:'Mage'},{name:'Chip',role:'Tank'},
+  {name:'Chou',role:'Fighter'},{name:'Cici',role:'Fighter'},{name:'Claude',role:'Marksman'},
+  {name:'Clint',role:'Marksman'},{name:'Cyclops',role:'Mage'},{name:'Diggie',role:'Support'},
+  {name:'Dyrroth',role:'Fighter'},{name:'Edith',role:'Tank'},{name:'Esmeralda',role:'Fighter'},
+  {name:'Estes',role:'Support'},{name:'Eudora',role:'Mage'},{name:'Fanny',role:'Assassin'},
+  {name:'Faramis',role:'Mage'},{name:'Floryn',role:'Support'},{name:'Franco',role:'Tank'},
+  {name:'Fredrinn',role:'Tank'},{name:'Freya',role:'Fighter'},{name:'Gatotkaca',role:'Tank'},
+  {name:'Gloo',role:'Tank'},{name:'Granger',role:'Marksman'},{name:'Grock',role:'Tank'},
+  {name:'Guinevere',role:'Fighter'},{name:'Gusion',role:'Assassin'},{name:'Hanabi',role:'Marksman'},
+  {name:'Hanzo',role:'Assassin'},{name:'Harith',role:'Mage'},{name:'Harley',role:'Mage'},
+  {name:'Hayabusa',role:'Assassin'},{name:'Helcurt',role:'Assassin'},{name:'Hilda',role:'Tank'},
+  {name:'Hylos',role:'Tank'},{name:'Irithel',role:'Marksman'},{name:'Ixia',role:'Marksman'},
+  {name:'Jawhead',role:'Fighter'},{name:'Johnson',role:'Tank'},{name:'Joy',role:'Assassin'},
+  {name:'Julian',role:'Fighter'},{name:'Kadita',role:'Mage'},{name:'Kagura',role:'Mage'},
+  {name:'Kaja',role:'Support'},{name:'Kalea',role:'Fighter'},{name:'Karina',role:'Assassin'},
+  {name:'Karrie',role:'Marksman'},{name:'Khaleed',role:'Fighter'},{name:'Khufra',role:'Tank'},
+  {name:'Kimmy',role:'Marksman'},{name:'Lancelot',role:'Assassin'},{name:'Lapu-Lapu',role:'Fighter'},
+  {name:'Layla',role:'Marksman'},{name:'Leomord',role:'Fighter'},{name:'Lesley',role:'Marksman'},
+  {name:'Ling',role:'Assassin'},{name:'Lolita',role:'Tank'},{name:'Lukas',role:'Fighter'},
+  {name:'Lunox',role:'Mage'},{name:'Luo Yi',role:'Mage'},{name:'Lylia',role:'Mage'},
+  {name:'Marcel',role:'Support'},{name:'Martis',role:'Fighter'},{name:'Masha',role:'Tank'},
+  {name:'Mathilda',role:'Support'},{name:'Melissa',role:'Marksman'},{name:'Minotaur',role:'Tank'},
+  {name:'Minsitthar',role:'Fighter'},{name:'Miya',role:'Marksman'},{name:'Moskov',role:'Marksman'},
+  {name:'Nana',role:'Mage'},{name:'Natalia',role:'Assassin'},{name:'Natan',role:'Marksman'},
+  {name:'Nolan',role:'Assassin'},{name:'Novaria',role:'Mage'},{name:'Obsidia',role:'Marksman'},
+  {name:'Odette',role:'Mage'},{name:'Paquito',role:'Fighter'},{name:'Pharsa',role:'Mage'},
+  {name:'Phoveus',role:'Fighter'},{name:'Popol and Kupa',role:'Marksman'},{name:'Rafaela',role:'Support'},
+  {name:'Roger',role:'Fighter'},{name:'Ruby',role:'Fighter'},{name:'Saber',role:'Assassin'},
+  {name:'Selena',role:'Assassin'},{name:'Silvanna',role:'Fighter'},{name:'Sora',role:'Fighter'},
+  {name:'Sun',role:'Fighter'},{name:'Suyou',role:'Fighter'},{name:'Terizla',role:'Fighter'},
+  {name:'Thamuz',role:'Fighter'},{name:'Tigreal',role:'Tank'},{name:'Uranus',role:'Tank'},
+  {name:'Vale',role:'Mage'},{name:'Valentina',role:'Mage'},{name:'Valir',role:'Mage'},
+  {name:'Vexana',role:'Mage'},{name:'Wanwan',role:'Marksman'},{name:'X.Borg',role:'Fighter'},
+  {name:'Xavier',role:'Mage'},{name:'Yi Sun-shin',role:'Assassin'},{name:'Yin',role:'Fighter'},
+  {name:'Yu Zhong',role:'Fighter'},{name:'Yve',role:'Mage'},{name:'Zetian',role:'Mage'},
+  {name:'Zhask',role:'Mage'},{name:'Zhuxin',role:'Mage'},{name:'Zilong',role:'Fighter'},
+  {name:'Bane',role:'Fighter'},
+];
+
+// ── state ──────────────────────────────────────────────
+let target = 'a';
+let activeRole = 'all';
+let winner = null;
+let entries = JSON.parse(localStorage.getItem('mlbb_picks') || '[]');
+let picks = { a: [], b: [] };
+
+// ── draft persistence ──────────────────────────────────
+function loadDraft() {
+  try {
+    const d = JSON.parse(localStorage.getItem('mlbb_draft') || 'null');
+    if (!d) return;
+    // восстанавливаем героев через HEROES чтобы role тоже была
+    const heroMap = {};
+    HEROES.forEach(h => heroMap[h.name] = h);
+    picks.a = (d.picks_a || []).map(n => heroMap[n]).filter(Boolean);
+    picks.b = (d.picks_b || []).map(n => heroMap[n]).filter(Boolean);
+    winner = d.winner || null;
+    if (d.match_id) document.getElementById('matchId').value = d.match_id;
+    if (d.map_num)  document.getElementById('mapNum').value  = d.map_num;
+  } catch(e) {}
+}
+
+function saveDraft() {
+  const hasSomething = picks.a.length > 0 || picks.b.length > 0;
+  if (hasSomething) {
+    localStorage.setItem('mlbb_draft', JSON.stringify({
+      picks_a: picks.a.map(h => h.name),
+      picks_b: picks.b.map(h => h.name),
+      winner,
+      match_id: document.getElementById('matchId').value.trim(),
+      map_num:  document.getElementById('mapNum').value,
+    }));
+    document.getElementById('draftBadge').classList.add('visible');
+  } else {
+    localStorage.removeItem('mlbb_draft');
+    document.getElementById('draftBadge').classList.remove('visible');
+  }
+}
+
+function clearDraft() {
+  localStorage.removeItem('mlbb_draft');
+  document.getElementById('draftBadge').classList.remove('visible');
+}
+
+// ── ui ─────────────────────────────────────────────────
+function setWinner(w) {
+  winner = w;
+  ['winA','winB','winNone'].forEach(id => document.getElementById(id).classList.remove('selected'));
+  if (w === 'A')      document.getElementById('winA').classList.add('selected');
+  else if (w === 'B') document.getElementById('winB').classList.add('selected');
+  else                document.getElementById('winNone').classList.add('selected');
+  saveDraft();
+}
+
+function setTarget(t) {
+  target = t;
+  document.getElementById('btnTargetA').className = 'target-btn' + (t==='a' ? ' active-a' : '');
+  document.getElementById('btnTargetB').className = 'target-btn' + (t==='b' ? ' active-b' : '');
+  updateStatus();
+}
+
+function updateStatus() {
+  const cur = picks[target].length;
+  const label = target === 'a' ? 'Team A' : 'Team B';
+  document.getElementById('statusMsg').textContent =
+    cur >= 5 ? `${label}: 5/5 — переключись на другую команду` : `${label}: ${cur}/5 — кликай героев`;
+  document.getElementById('saveBtn').disabled = !(picks.a.length===5 && picks.b.length===5);
+}
+
+function renderSlots() {
+  ['a','b'].forEach(team => {
+    const el = document.getElementById(`slots-${team}`);
+    el.innerHTML = '';
+    for (let i = 0; i < 5; i++) {
+      const hero = picks[team][i];
+      const slot = document.createElement('div');
+      slot.className = `slot ${hero ? 'filled-'+team : ''}`;
+      if (hero) {
+        const color = ROLE_COLORS[hero.role] || 'var(--dim)';
+        slot.innerHTML = `<span class="role-dot" style="background:${color}"></span>
+          <span class="slot-num">${i+1}</span>
+          <span class="slot-name">${hero.name}</span>
+          <span class="slot-remove" onclick="removeHero('${team}',${i})">✕</span>`;
+      } else {
+        slot.innerHTML = `<span class="slot-num">${i+1}</span><span class="slot-name" style="color:var(--dim)">—</span>`;
+      }
+      el.appendChild(slot);
+    }
+  });
+}
+
+function renderHeroes() {
+  const grid = document.getElementById('heroGrid');
+  const used_a = new Set(picks.a.map(h => h.name));
+  const used_b = new Set(picks.b.map(h => h.name));
+  const filtered = (activeRole === 'all' ? [...HEROES] : HEROES.filter(h => h.role === activeRole))
+    .sort((a,b) => a.name.localeCompare(b.name));
+  grid.innerHTML = '';
+  filtered.forEach(hero => {
+    const btn = document.createElement('button');
+    const color = ROLE_COLORS[hero.role] || 'var(--dim)';
+    const inA = used_a.has(hero.name), inB = used_b.has(hero.name);
+    btn.className = `hero-btn ${inA ? 'used-a' : inB ? 'used-b' : ''}`;
+    btn.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0"></span>${hero.name}`;
+    btn.onclick = () => pickHero(hero);
+    if (inA || inB) btn.disabled = true;
+    grid.appendChild(btn);
+  });
+}
+
+function renderRoleTabs() {
+  const tabs = document.getElementById('roleTabs');
+  const roles = ['all','Fighter','Assassin','Mage','Tank','Marksman','Support'];
+  const labels = {all:'Все',Fighter:'Боец',Assassin:'Убийца',Mage:'Маг',Tank:'Танк',Marksman:'Стрелок',Support:'Поддержка'};
+  tabs.innerHTML = '';
+  roles.forEach(r => {
+    const btn = document.createElement('button');
+    btn.className = `role-tab ${r===activeRole ? 'active' : ''}`;
+    btn.dataset.role = r;
+    btn.textContent = labels[r];
+    btn.onclick = () => { activeRole = r; renderRoleTabs(); renderHeroes(); };
+    tabs.appendChild(btn);
+  });
+}
+
+function pickHero(hero) {
+  if (picks[target].length >= 5) return;
+  const used = new Set([...picks.a,...picks.b].map(h => h.name));
+  if (used.has(hero.name)) return;
+  picks[target].push(hero);
+  renderSlots(); renderHeroes(); updateStatus();
+  saveDraft();
+}
+
+function removeHero(team, idx) {
+  picks[team].splice(idx, 1);
+  renderSlots(); renderHeroes(); updateStatus();
+  saveDraft();
+}
+
+function clearAll() {
+  picks = { a: [], b: [] };
+  renderSlots(); renderHeroes(); updateStatus();
+  clearDraft();
+}
+
+// ── save / log ──────────────────────────────────────────
+function saveEntry() {
+  const matchId = document.getElementById('matchId').value.trim();
+  const mapNum  = document.getElementById('mapNum').value;
+  if (!matchId) { alert('Введи Match ID'); return; }
+  entries.push({
+    match_id: matchId,
+    map_num: parseInt(mapNum),
+    winner: winner || '',
+    team_a: picks.a.map(h => h.name),
+    team_b: picks.b.map(h => h.name),
+    recorded_at: new Date().toISOString().replace('T',' ').slice(0,19),
+  });
+  localStorage.setItem('mlbb_picks', JSON.stringify(entries));
+  clearAll();
+  setWinner(null);
+  document.getElementById('mapNum').value = parseInt(mapNum) + 1;
+  renderLog();
+}
+
+function renderLog() {
+  const el = document.getElementById('logRows');
+  if (!entries.length) { el.innerHTML = '<div class="empty-log">— пусто —</div>'; return; }
+  el.innerHTML = '';
+  [...entries].reverse().forEach((e, ri) => {
+    const idx = entries.length - 1 - ri;
+    const row = document.createElement('div');
+    row.className = 'log-row';
+    const wc = e.winner==='A' ? 'var(--team-a)' : e.winner==='B' ? 'var(--team-b)' : 'var(--dim)';
+    row.innerHTML = `
+      <span class="lid">${e.match_id}</span>
+      <span class="lmap">Map ${e.map_num}</span>
+      <span style="min-width:40px;font-weight:700;color:${wc}">W:${e.winner||'?'}</span>
+      <span class="la">A: ${e.team_a.join(', ')}</span>
+      <span class="lb">B: ${e.team_b.join(', ')}</span>
+      <span class="log-del" onclick="deleteEntry(${idx})">✕</span>`;
+    el.appendChild(row);
+  });
+}
+
+function deleteEntry(idx) {
+  if (!confirm('Удалить запись?')) return;
+  entries.splice(idx, 1);
+  localStorage.setItem('mlbb_picks', JSON.stringify(entries));
+  renderLog();
+}
+
+function exportCSV() {
+  const rows = [['match_id','map_num','winner','team','hero_1','hero_2','hero_3','hero_4','hero_5','recorded_at']];
+  entries.forEach(e => {
+    rows.push([e.match_id, e.map_num, e.winner||'', 'A', ...e.team_a.concat(Array(5).fill('')).slice(0,5), e.recorded_at]);
+    rows.push([e.match_id, e.map_num, e.winner||'', 'B', ...e.team_b.concat(Array(5).fill('')).slice(0,5), e.recorded_at]);
+  });
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'heroes_log.csv';
+  a.click();
+}
+
+document.getElementById('matchId').addEventListener('input', saveDraft);
+document.getElementById('mapNum').addEventListener('input', saveDraft);
+
+// ── init ────────────────────────────────────────────────
+loadDraft();
+renderRoleTabs();
+renderSlots();
+renderHeroes();
+updateStatus();
+renderLog();
+setWinner(winner);
+</script>
+</body>
+</html>

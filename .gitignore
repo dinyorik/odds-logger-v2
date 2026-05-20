@@ -1,0 +1,46 @@
+# Secrets — NEVER commit
+.env
+curl.txt
+bot.log
+bot.log.archive_*
+
+# Runtime IPC markers
+winner_needed.txt
+winner_answer.txt
+
+# Debug dumps (regenerated on first run)
+debug_events.json
+debug_stat.json
+
+# Local data — your accumulated bets/logs are personal
+data/odds_log.csv
+data/matches.csv
+data/auto_bets.csv
+data/historical_bets.csv
+data/bot_bank.json
+
+# Generated outputs
+output/odds_dashboard.xlsx
+output/odds_dashboard_*.xlsx
+output/backtest_results.csv
+output/backtest_details.csv
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# Backups
+*.bak
+*.bak2
+*.tmp
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
